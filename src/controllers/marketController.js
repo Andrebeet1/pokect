@@ -1,8 +1,32 @@
 import { analyseMarche, analyserBougie } from '../services/groqService.js';
 import { envoyerMessage } from '../services/telegramService.js';
+import { genererNouvellePrediction } from '../utils/prediction.js'; // ✅ Import ajouté
 
 let sequence = [];
 let chatIdMemo = null;
+
+// ✅ Fonction pour envoyer une prédiction avec boutons
+export async function envoyerPredictionAvecBouton() {
+  if (!chatIdMemo) return;
+
+  const { texte } = await genererNouvellePrediction();
+
+  const message = `🔮 *Nouvelle Prédiction*\n${texte}`;
+  const options = {
+    parse_mode: 'Markdown',
+    reply_markup: {
+      inline_keyboard: [
+        [
+          { text: '📈 Acheter', callback_data: 'acheter' },
+          { text: '📉 Vendre', callback_data: 'vendre' },
+          { text: '⏸️ Attendre', callback_data: 'attendre' }
+        ]
+      ]
+    }
+  };
+
+  await envoyerMessage(chatIdMemo, message, '📩 Prédiction envoyée avec boutons', options);
+}
 
 // Fonction appelée quand tu reçois un message Telegram
 export async function gererMessageTelegram(msg) {
@@ -66,5 +90,6 @@ export default {
   gererMessageTelegram,
   processIncomingData,
   analyserEtEnvoyerBougie,
+  envoyerPredictionAvecBouton, // ✅ Ajouté à l’export
   resetSequence
 };
