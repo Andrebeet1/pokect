@@ -1,6 +1,6 @@
 import { analyseMarche, analyserBougie } from '../services/groqService.js';
 import { envoyerMessage } from '../services/telegramService.js';
-import { genererNouvellePrediction } from '../utils/prediction.js'; // ✅ OK
+import { genererNouvellePrediction } from '../utils/prediction.js';
 
 let sequence = [];
 let chatIdMemo = null;
@@ -85,4 +85,16 @@ export async function analyserEtEnvoyerBougie(chatId, bougie) {
 // ✅ Reset manuel de la séquence
 export function resetSequence() {
   sequence = [];
+}
+
+// ✅ Export ajouté : Gère les updates du webhook Telegram
+export async function handleUpdate(update) {
+  if (update.message) {
+    await gererMessageTelegram(update.message);
+  } else if (update.callback_query) {
+    const chatId = update.callback_query.message.chat.id;
+    const data = update.callback_query.data;
+
+    await envoyerMessage(chatId, `✅ Action reçue : ${data}`);
+  }
 }
