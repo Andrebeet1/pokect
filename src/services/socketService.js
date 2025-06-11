@@ -22,8 +22,18 @@ export function startSocket() {
   });
 
   socket.on('data', async (payload) => {
-    // Remplace par la bonne clé si nécessaire
-    const valeur = payload.price || Math.random() * 100;
-    await processIncomingData(valeur);
+    try {
+      if (!payload || typeof payload !== 'object') {
+        console.warn('⚠️ Donnée WebSocket invalide reçue :', payload);
+        return;
+      }
+
+      // 🔎 Adapte cette clé selon les données réelles du flux WebSocket
+      const valeur = typeof payload.price === 'number' ? payload.price : Math.random() * 100;
+
+      await processIncomingData(valeur);
+    } catch (error) {
+      console.error('❌ Erreur lors du traitement des données entrantes :', error.message);
+    }
   });
 }
