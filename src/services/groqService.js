@@ -3,7 +3,14 @@ import { GROQ_API_KEY } from '../config.js';
 
 // 🔍 Analyse une séquence de valeurs
 export async function analyseMarche(sequence) {
-  const prompt = `Voici une séquence de valeurs numériques : ${sequence.join(', ')}.\nAnalyse et indique :\n- Mouvement : Hausse, Baisse ou Stable\n- Durée estimée en minutes.\nFormat de réponse :\nMouvement : [Hausse/Baisse/Stable]\nDurée : [x] minutes`;
+  const prompt = `
+Voici une séquence de prix : ${sequence.join(', ')}.
+En te basant sur la philosophie du trading (support, résistance, tendance), donne-moi uniquement :
+Buy : [prix]
+Sell : [prix]
+Action : [Acheter maintenant / Vendre maintenant / Attendre]
+Pas d'explication, uniquement ces trois lignes.
+  `;
 
   try {
     const response = await axios.post(
@@ -39,13 +46,19 @@ export async function analyserBougie(bougie) {
       return '❌ Bougie invalide (valeurs manquantes ou incorrectes).';
     }
 
-    const prompt = `Analyse cette bougie :
-- Ouverture (Open) : ${open.toFixed(2)}
-- Haut (High) : ${high.toFixed(2)}
-- Bas (Low) : ${low.toFixed(2)}
-- Clôture (Close) : ${close.toFixed(2)}
+    const prompt = `
+Voici une bougie :
+- Open : ${open.toFixed(2)}
+- High : ${high.toFixed(2)}
+- Low : ${low.toFixed(2)}
+- Close : ${close.toFixed(2)}
 
-Indique si c’est une bougie haussière ou baissière, la force du mouvement et une brève interprétation. Réponds en une phrase.`;
+En te basant sur la philosophie du trading (support, résistance, tendance), donne-moi uniquement :
+Buy : [prix]
+Sell : [prix]
+Action : [Acheter maintenant / Vendre maintenant / Attendre]
+Pas d'explication, uniquement ces trois lignes.
+    `;
 
     const response = await axios.post(
       'https://api.groq.com/openai/v1/chat/completions',
