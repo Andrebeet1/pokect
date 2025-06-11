@@ -1,78 +1,93 @@
 import express from 'express';
-import { handleUpdate, envoyerPredictionAvecBouton, envoyerAnalyseBougie, resetSequence } from '../controllers/marketController.js';
+import {
+  handleUpdate,
+  envoyerPredictionAvecBouton,
+  envoyerAnalyseBougie,
+  resetSequence
+} from '../controllers/marketController.js';
 import bot from '../bot.js';
 import { genererNouvellePrediction } from '../utils/prediction.js';
+import WebSocket from 'ws';
 
 const router = express.Router();
 
-// Webhook Telegram (réception des messages / commandes)
+// 📩 Webhook Telegram (réception des messages / commandes)
 router.post('/', async (req, res) => {
   try {
     await handleUpdate(req.body);
     res.sendStatus(200);
   } catch (e) {
-    console.error('Erreur webhook:', e);
+    console.error('❌ Erreur webhook:', e);
     res.sendStatus(500);
   }
 });
 
-// 🔁 Gestion du bouton "Nouvelle prédiction"
+// 🔘 Gestion des boutons inline
 bot.on('callback_query', async (query) => {
   const chatId = query.message.chat.id;
 
-  if (query.data === 'NOUVELLE_PREDICTION') {
-    await bot.answerCallbackQuery(query.id);
-    
-    // ✅ Réinitialiser la séquence pour une nouvelle prédiction propre
-    resetSequence();
-
-    // Génère et envoie une nouvelle prédiction
-    await envoyerPredictionAvecBouton(chatId);
-  }
-
-  if (query.data === 'regenerer') {
+  try {
     await bot.answerCallbackQuery(query.id);
 
-    const result = genererNouvellePrediction();
-    const { texte, mouvement } = result;
+    if (query.data === 'NOUVELLE_PREDICTION') {
+      resetSequence();
+      await envoyerPredictionAvecBouton(chatId);
+    }
 
-    let emoji = '⚪️ STABLE';
-    if (/hausse/i.test(mouvement)) emoji = '🟢 BUY';
-    else if (/baisse/i.test(mouvement)) emoji = '🔴 SELL';
+    if (query.data === 'regenerer') {
+      const result = await genererNouvellePrediction();
+      const { texte, mouvement } = result;
 
-    const message = `${emoji}\n\n${texte}`;
+      let emoji = '⚪️ STABLE';
+      if (/hausse/i.test(mouvement)) emoji = '🟢 BUY';
+      else if (/baisse/i.test(mouvement)) emoji = '🔴 SELL';
 
-    await bot.sendMessage(chatId, message, {
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: '🔁 Nouvelle prédiction', callback_data: 'regenerer' }]
-        ]
-      }
-    });
+      const message = `${emoji}\n\n${texte}`;
+
+      await bot.sendMessage(chatId, message, {
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: '🔁 Nouvelle prédiction', callback_data: 'regenerer' }]
+          ]
+        }
+      });
+    }
+  } catch (err) {
+    console.error('❌ Erreur callback_query :', err);
   }
 });
 
-// 📡 Simule un WebSocket pour recevoir des ticks avec données OHLC
-import WebSocket from 'ws';
+// 📡 WebSocket pour recevoir des données de marché (tick)
 const ws = new WebSocket('wss://api-us-north.po.market/socket.io/?EIO=4&transport=websocket');
 
-// À chaque tick, exécuter une analyse de bougie
-ws.on('message', async (data) => {
+ws.on('message', async (rawData) => {
   try {
-    const tick = JSON.parse(data);
+    const jsonData = rawData.toString().trim();
 
-    // Exemple de données de bougie : adapte selon ta source réelle
+    // Tentative de détection et d'extraction du vrai JSON
+    const jsonStart = jsonData.indexOf('{');
+    if (jsonStart === -1) throw new Error('Données non JSON');
+
+    const data = JSON.parse(jsonData.slice(jsonStart));
+
+    // ✅ Vérifie que les champs nécessaires existent et sont numériques
     const bougie = {
-      open: tick.open,
-      high: tick.high,
-      low: tick.low,
-      close: tick.close
+      open: parseFloat(data?.open),
+      high: parseFloat(data?.high),
+      low: parseFloat(data?.low),
+      close: parseFloat(data?.close)
     };
 
-    // Appelle analyse Groq bougie
-    await envoyerAnalyseBougie(null, bougie); // null = pas de chatId (optionnel si tu veux envoyer à chatIdMemo)
+    if (
+      [bougie.open, bougie.high, bougie.low, bougie.close].some(v => isNaN(v))
+    ) {
+      console.error('⛔ Bougie invalide ou incomplète reçue :', bougie);
+      return;
+    }
+
+    await envoyerAnalyseBougie(null, bougie); // null : pas de chatId cible direct
   } catch (e) {
-    console.error('Erreur WebSocket Bougie:', e.message);
+    console.error('❌ Erreur WebSocket Bougie:', e.message);
   }
 });
 
