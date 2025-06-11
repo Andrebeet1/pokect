@@ -82,14 +82,7 @@ export async function analyserEtEnvoyerBougie(chatId, bougie) {
   await envoyerMessage(cibleChatId, message, `Analyse bougie : Buy ${buy} / Sell ${sell} / Action : ${action}`);
 }
 
+// ✅ Fonction de reset
 export function resetSequence() {
   sequence = [];
 }
-
-export default {
-  gererMessageTelegram,
-  processIncomingData,
-  analyserEtEnvoyerBougie,
-  envoyerPredictionAvecBouton, // ✅ Ajouté à l’export
-  resetSequence
-};
