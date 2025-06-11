@@ -4,8 +4,8 @@ const anciensMessagesParChat = {};
 
 export async function envoyerMessage(chatId, texte, mouvement) {
   let emoji = '⚪️ STABLE';
-  if (/hausse/i.test(mouvement)) emoji = '🟢 BUY';
-  else if (/baisse/i.test(mouvement)) emoji = '🔴 SELL';
+  if (/buy|hausse/i.test(mouvement)) emoji = '🟩🟩🟩 BUY';
+  else if (/sell|baisse/i.test(mouvement)) emoji = '🟥🟥🟥 SELL';
 
   const message = `${emoji}\n\n${texte}`;
 
