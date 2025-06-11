@@ -2,7 +2,7 @@ import express from 'express';
 import {
   handleUpdate,
   envoyerPredictionAvecBouton,
-  envoyerAnalyseBougie,
+  analyserEtEnvoyerBougie,
   resetSequence
 } from '../controllers/marketController.js';
 
@@ -99,7 +99,7 @@ bot.on('callback_query', async (query) => {
       high: (Math.random() * 100).toFixed(2),
       low: (Math.random() * 100).toFixed(2)
     };
-    await envoyerAnalyseBougie(chatId, bougieTest);
+    await analyserEtEnvoyerBougie(chatId, bougieTest);
   }
 
   // 📊 Statistiques
@@ -148,7 +148,7 @@ ws.on('message', async (data) => {
       return;
     }
 
-    await envoyerAnalyseBougie(null, bougie);
+    await analyserEtEnvoyerBougie(null, bougie);
   } catch (e) {
     console.error('❌ Erreur WebSocket Bougie:', e.message);
   }
