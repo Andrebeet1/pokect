@@ -2,26 +2,28 @@ import express from 'express';
 import webhookRouter from './webhook/webhook.js';
 import { PORT } from './config.js';
 
-// (Optionnel) Importer socketService si tu veux activer les websockets
-// import './services/socketService.js';
-
 const app = express();
 
-// Middleware pour parser le JSON (plus besoin de body-parser)
+// Middleware JSON
 app.use(express.json());
 
-// Middleware (optionnel) pour permettre des requêtes CORS
+// Middleware CORS (optionnel mais recommandé)
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, GET');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   next();
+});
+
+// Route d'accueil (GET /)
+app.get('/', (req, res) => {
+  res.send('🤖 Bot Telegram actif !');
 });
 
 // Webhook Telegram
 app.use('/webhook', webhookRouter);
 
-// Lancement du serveur
+// Lancer le serveur
 app.listen(PORT, () => {
   console.log(`✅ Serveur Express démarré sur le port ${PORT}`);
 });
