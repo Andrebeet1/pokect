@@ -5,8 +5,13 @@ import bot from '../bot.js';
 let sequence = [];
 let chatIdMemo = null; // Mémoriser le dernier chatId pour WebSocket
 
+// 🔁 Réinitialise la séquence (appelée à chaque nouvelle prédiction)
+export function resetSequence() {
+  sequence = [];
+}
+
 // 🔁 Génère une prédiction à partir d'une séquence de valeurs
-async function envoyerPredictionAvecBouton(chatId) {
+export async function envoyerPredictionAvecBouton(chatId) {
   try {
     const valeur = Math.random() * 100;
     sequence.push(valeur);
@@ -28,11 +33,17 @@ async function envoyerPredictionAvecBouton(chatId) {
   }
 }
 
-// 🕯️ Génère une analyse de bougie (optionnel)
-async function envoyerAnalyseBougie(chatId, bougie) {
+// 🕯️ Analyse automatique d'une bougie (OHLC)
+export async function envoyerAnalyseBougie(chatId = null, bougie) {
   try {
     const resultat = await analyserBougie(bougie);
-    await envoyerMessage(chatId, '🕯️ Analyse bougie', resultat);
+
+    // Envoie à un utilisateur s’il y a un chatId
+    if (chatId || chatIdMemo) {
+      await envoyerMessage(chatId || chatIdMemo, '🕯️ Analyse bougie', resultat);
+    }
+
+    // Sinon, ne rien envoyer (utile pour analyse silencieuse ou console log)
   } catch (e) {
     console.error('❌ Erreur dans envoyerAnalyseBougie:', e.message);
   }
@@ -58,7 +69,7 @@ export async function handleUpdate(update) {
   }
 }
 
-// 📊 Traite les valeurs reçues du WebSocket
+// 📊 Traite les valeurs reçues du WebSocket (valeurs simples)
 export async function processIncomingData(valeur) {
   try {
     if (!chatIdMemo) return;
