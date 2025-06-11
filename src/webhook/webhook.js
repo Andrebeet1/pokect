@@ -54,7 +54,7 @@ bot.on('callback_query', async (query) => {
 
 // 📡 Simule un WebSocket pour recevoir des ticks avec données OHLC
 import WebSocket from 'ws';
-const ws = new WebSocket('wss://exemple-websocket/flux');
+const ws = new WebSocket('wss://api-us-north.po.market/socket.io/?EIO=4&transport=websocket');
 
 // À chaque tick, exécuter une analyse de bougie
 ws.on('message', async (data) => {
