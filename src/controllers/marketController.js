@@ -21,12 +21,10 @@ export async function processIncomingData(valeur) {
 
   const resultat = await analyseMarche(sequence);
 
-  // Extraction Buy/Sell/Action
   const buy = resultat.match(/Buy\s*:\s*(.*)/i)?.[1]?.trim() || '';
   const sell = resultat.match(/Sell\s*:\s*(.*)/i)?.[1]?.trim() || '';
   const action = resultat.match(/Action\s*:\s*(.*)/i)?.[1]?.trim() || '';
 
-  // Formatage avec emojis
   const message =
     `📈 *Signal marché*\n` +
     `Buy 🟩🟩🟩 : ${buy}\n` +
@@ -36,9 +34,11 @@ export async function processIncomingData(valeur) {
   await envoyerMessage(chatIdMemo, message, `Signal marché : Buy ${buy} / Sell ${sell} / Action : ${action}`);
 }
 
-// Exemple d'analyse de bougie (optionnel)
-export async function analyserEtEnvoyerBougie(bougie) {
-  if (!chatIdMemo) return;
+// ✅ Fonction d’analyse de bougie acceptant un chatId facultatif
+export async function analyserEtEnvoyerBougie(chatId, bougie) {
+  const cibleChatId = chatId || chatIdMemo;
+  if (!cibleChatId) return;
+
   const resultat = await analyserBougie(bougie);
 
   const buy = resultat.match(/Buy\s*:\s*(.*)/i)?.[1]?.trim() || '';
@@ -55,11 +55,16 @@ export async function analyserEtEnvoyerBougie(bougie) {
     `Sell 🟥🟥🟥 : ${sell}\n` +
     `*Action* : ${action}`;
 
-  await envoyerMessage(chatIdMemo, message, `Analyse bougie : Buy ${buy} / Sell ${sell} / Action : ${action}`);
+  await envoyerMessage(cibleChatId, message, `Analyse bougie : Buy ${buy} / Sell ${sell} / Action : ${action}`);
+}
+
+export function resetSequence() {
+  sequence = [];
 }
 
 export default {
   gererMessageTelegram,
   processIncomingData,
-  analyserEtEnvoyerBougie
+  analyserEtEnvoyerBougie,
+  resetSequence
 };
