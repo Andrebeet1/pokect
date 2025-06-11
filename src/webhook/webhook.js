@@ -1,7 +1,7 @@
 import express from 'express';
-import { handleUpdate } from '../controllers/marketController.js';
+import { handleUpdate, envoyerPredictionAvecBouton, envoyerAnalyseBougie, resetSequence } from '../controllers/marketController.js';
 import bot from '../bot.js';
-import { genererNouvellePrediction } from '../utils/prediction.js'; // adapte si le chemin diffère
+import { genererNouvellePrediction } from '../utils/prediction.js';
 
 const router = express.Router();
 
@@ -16,17 +16,26 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Gestion du bouton "🔁 Nouvelle prédiction"
+// 🔁 Gestion du bouton "Nouvelle prédiction"
 bot.on('callback_query', async (query) => {
   const chatId = query.message.chat.id;
 
-  if (query.data === 'regenerer') {
-    await bot.answerCallbackQuery(query.id); // pour supprimer le "loading..."
+  if (query.data === 'NOUVELLE_PREDICTION') {
+    await bot.answerCallbackQuery(query.id);
+    
+    // ✅ Réinitialiser la séquence pour une nouvelle prédiction propre
+    resetSequence();
 
-    const result = genererNouvellePrediction(); // génère une prédiction (texte, mouvement)
+    // Génère et envoie une nouvelle prédiction
+    await envoyerPredictionAvecBouton(chatId);
+  }
+
+  if (query.data === 'regenerer') {
+    await bot.answerCallbackQuery(query.id);
+
+    const result = genererNouvellePrediction();
     const { texte, mouvement } = result;
 
-    // Choisir l’emoji en fonction du mouvement
     let emoji = '⚪️ STABLE';
     if (/hausse/i.test(mouvement)) emoji = '🟢 BUY';
     else if (/baisse/i.test(mouvement)) emoji = '🔴 SELL';
@@ -40,6 +49,30 @@ bot.on('callback_query', async (query) => {
         ]
       }
     });
+  }
+});
+
+// 📡 Simule un WebSocket pour recevoir des ticks avec données OHLC
+import WebSocket from 'ws';
+const ws = new WebSocket('wss://exemple-websocket/flux');
+
+// À chaque tick, exécuter une analyse de bougie
+ws.on('message', async (data) => {
+  try {
+    const tick = JSON.parse(data);
+
+    // Exemple de données de bougie : adapte selon ta source réelle
+    const bougie = {
+      open: tick.open,
+      high: tick.high,
+      low: tick.low,
+      close: tick.close
+    };
+
+    // Appelle analyse Groq bougie
+    await envoyerAnalyseBougie(null, bougie); // null = pas de chatId (optionnel si tu veux envoyer à chatIdMemo)
+  } catch (e) {
+    console.error('Erreur WebSocket Bougie:', e.message);
   }
 });
 
