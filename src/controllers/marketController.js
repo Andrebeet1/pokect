@@ -36,14 +36,21 @@ export async function envoyerPredictionAvecBouton(chatId) {
 // 🕯️ Analyse automatique d'une bougie (OHLC)
 export async function envoyerAnalyseBougie(chatId = null, bougie) {
   try {
+    if (
+      !bougie ||
+      typeof bougie.open !== 'number' ||
+      typeof bougie.close !== 'number'
+    ) {
+      console.warn('⛔ Bougie invalide ou incomplète reçue :', bougie);
+      return;
+    }
+
     const resultat = await analyserBougie(bougie);
 
     // Envoie à un utilisateur s’il y a un chatId
     if (chatId || chatIdMemo) {
       await envoyerMessage(chatId || chatIdMemo, '🕯️ Analyse bougie', resultat);
     }
-
-    // Sinon, ne rien envoyer (utile pour analyse silencieuse ou console log)
   } catch (e) {
     console.error('❌ Erreur dans envoyerAnalyseBougie:', e.message);
   }
@@ -52,7 +59,8 @@ export async function envoyerAnalyseBougie(chatId = null, bougie) {
 // 📩 Traite les messages Telegram
 export async function handleUpdate(update) {
   try {
-    const chatId = update?.message?.chat?.id || update?.callback_query?.message?.chat?.id;
+    const chatId =
+      update?.message?.chat?.id || update?.callback_query?.message?.chat?.id;
     if (!chatId) return;
 
     chatIdMemo = chatId;
@@ -73,6 +81,11 @@ export async function handleUpdate(update) {
 export async function processIncomingData(valeur) {
   try {
     if (!chatIdMemo) return;
+
+    if (typeof valeur !== 'number') {
+      console.warn('⛔ Valeur WebSocket ignorée (non numérique) :', valeur);
+      return;
+    }
 
     sequence.push(valeur);
     if (sequence.length > 10) sequence.shift();
