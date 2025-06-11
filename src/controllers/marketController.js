@@ -1,11 +1,11 @@
 import { analyseMarche, analyserBougie } from '../services/groqService.js';
 import { envoyerMessage } from '../services/telegramService.js';
-import { genererNouvellePrediction } from '../utils/prediction.js'; // ✅ Import ajouté
+import { genererNouvellePrediction } from '../utils/prediction.js'; // ✅ OK
 
 let sequence = [];
 let chatIdMemo = null;
 
-// ✅ Fonction pour envoyer une prédiction avec boutons
+// ✅ Envoie une prédiction avec des boutons interactifs
 export async function envoyerPredictionAvecBouton() {
   if (!chatIdMemo) return;
 
@@ -28,20 +28,20 @@ export async function envoyerPredictionAvecBouton() {
   await envoyerMessage(chatIdMemo, message, '📩 Prédiction envoyée avec boutons', options);
 }
 
-// Fonction appelée quand tu reçois un message Telegram
+// ✅ Gère les messages Telegram (start, test, etc.)
 export async function gererMessageTelegram(msg) {
   const chatId = msg.chat.id;
   chatIdMemo = chatId;
+
   await envoyerMessage(chatId, "👋 Prêt à recevoir les signaux du marché !");
 }
 
-// Fonction appelée à chaque nouvelle valeur du WebSocket
+// ✅ Reçoit des valeurs (par exemple via WebSocket) pour analyse en séquence
 export async function processIncomingData(valeur) {
-  if (!chatIdMemo) return;
-  if (typeof valeur !== 'number') return;
+  if (!chatIdMemo || typeof valeur !== 'number') return;
 
   sequence.push(valeur);
-  if (sequence.length > 10) sequence.shift();
+  if (sequence.length > 10) sequence.shift(); // Garde les 10 dernières
 
   const resultat = await analyseMarche(sequence);
 
@@ -58,7 +58,7 @@ export async function processIncomingData(valeur) {
   await envoyerMessage(chatIdMemo, message, `Signal marché : Buy ${buy} / Sell ${sell} / Action : ${action}`);
 }
 
-// ✅ Fonction d’analyse de bougie acceptant un chatId facultatif
+// ✅ Analyse d’une seule bougie avec affichage clair
 export async function analyserEtEnvoyerBougie(chatId, bougie) {
   const cibleChatId = chatId || chatIdMemo;
   if (!cibleChatId) return;
@@ -82,7 +82,7 @@ export async function analyserEtEnvoyerBougie(chatId, bougie) {
   await envoyerMessage(cibleChatId, message, `Analyse bougie : Buy ${buy} / Sell ${sell} / Action : ${action}`);
 }
 
-// ✅ Fonction de reset
+// ✅ Reset manuel de la séquence
 export function resetSequence() {
   sequence = [];
 }
