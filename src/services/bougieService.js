@@ -2,11 +2,12 @@ let valeurs = [];
 
 /**
  * 📥 Ajoute une valeur numérique avec timestamp
+ * @param {number|string} valeur - La valeur à ajouter
  */
 export function ajouterValeur(valeur) {
   const num = parseFloat(valeur);
 
-  if (typeof num !== 'number' || isNaN(num)) {
+  if (isNaN(num)) {
     console.warn('⛔ Valeur ignorée (non numérique ou invalide) :', valeur);
     return;
   }
@@ -18,11 +19,15 @@ export function ajouterValeur(valeur) {
 }
 
 /**
- * 🕯️ Construit une bougie à partir des valeurs accumulées
- * puis réinitialise la liste.
+ * 🕯️ Construit une bougie OHLC à partir des valeurs accumulées
+ * puis réinitialise le tableau des valeurs.
+ * @returns {{open: number, high: number, low: number, close: number} | null}
  */
 export function construireBougieEtReinitialiser() {
-  if (valeurs.length === 0) return null;
+  if (valeurs.length === 0) {
+    console.warn('⚠️ Aucune valeur pour construire une bougie.');
+    return null;
+  }
 
   const liste = valeurs.map(v => v.valeur);
   const open = liste[0];
@@ -32,15 +37,16 @@ export function construireBougieEtReinitialiser() {
 
   const bougie = { open, high, low, close };
 
-  // Vérifie que la bougie est complète
-  if (
-    [open, high, low, close].some(val => typeof val !== 'number' || isNaN(val))
-  ) {
+  const invalid = [open, high, low, close].some(
+    val => typeof val !== 'number' || isNaN(val)
+  );
+
+  if (invalid) {
     console.error('⛔ Bougie invalide ou incomplète :', bougie);
-    valeurs.length = 0; // Réinitialise malgré tout
+    valeurs.length = 0; // Réinitialise même si invalide
     return null;
   }
 
-  valeurs.length = 0; // Réinitialise proprement
+  valeurs.length = 0; // Réinitialise les données
   return bougie;
 }
