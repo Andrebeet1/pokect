@@ -1,23 +1,25 @@
 let valeurs = [];
 
 /**
- * Ajoute une valeur numérique avec timestamp
+ * 📥 Ajoute une valeur numérique avec timestamp
  */
 export function ajouterValeur(valeur) {
-  if (typeof valeur !== 'number' || isNaN(valeur)) {
+  const num = parseFloat(valeur);
+
+  if (typeof num !== 'number' || isNaN(num)) {
     console.warn('⛔ Valeur ignorée (non numérique ou invalide) :', valeur);
     return;
   }
 
   valeurs.push({
-    valeur,
+    valeur: num,
     timestamp: Date.now()
   });
 }
 
 /**
- * Construit une bougie à partir des valeurs accumulées
- * et réinitialise la liste.
+ * 🕯️ Construit une bougie à partir des valeurs accumulées
+ * puis réinitialise la liste.
  */
 export function construireBougieEtReinitialiser() {
   if (valeurs.length === 0) return null;
@@ -30,6 +32,15 @@ export function construireBougieEtReinitialiser() {
 
   const bougie = { open, high, low, close };
 
-  valeurs = []; // Réinitialise la bougie pour la prochaine
+  // Vérifie que la bougie est complète
+  if (
+    [open, high, low, close].some(val => typeof val !== 'number' || isNaN(val))
+  ) {
+    console.error('⛔ Bougie invalide ou incomplète :', bougie);
+    valeurs.length = 0; // Réinitialise malgré tout
+    return null;
+  }
+
+  valeurs.length = 0; // Réinitialise proprement
   return bougie;
 }
