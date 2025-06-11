@@ -10,6 +10,15 @@ export function resetSequence() {
   sequence = [];
 }
 
+// Helper pour supprimer un message après un délai
+async function supprimerMessageApres(chatId, messageId, delay = 60000) {
+  setTimeout(() => {
+    bot.deleteMessage(chatId, messageId).catch((err) => {
+      console.warn('❌ Erreur suppression message :', err.message);
+    });
+  }, delay);
+}
+
 // 🔁 Génère une prédiction à partir d'une séquence de valeurs
 export async function envoyerPredictionAvecBouton(chatId) {
   try {
@@ -18,16 +27,20 @@ export async function envoyerPredictionAvecBouton(chatId) {
     if (sequence.length > 10) sequence.shift();
 
     const resultat = await analyseMarche(sequence);
-    await envoyerMessage(chatId, resultat, resultat);
 
-    // Envoyer le bouton de régénération
-    await bot.sendMessage(chatId, '🔁 Générer une autre prédiction ?', {
+    // Envoie le message principal (avec parse_mode Markdown pour mise en forme)
+    const sentMessage = await bot.sendMessage(chatId, `📈 *Prédiction :*\n${resultat}`, {
+      parse_mode: 'Markdown',
       reply_markup: {
         inline_keyboard: [
           [{ text: '🔁 Nouvelle prédiction', callback_data: 'NOUVELLE_PREDICTION' }]
         ]
       }
     });
+
+    // Supprime le message après 60 secondes
+    await supprimerMessageApres(chatId, sentMessage.message_id, 60000);
+
   } catch (e) {
     console.error('❌ Erreur dans envoyerPredictionAvecBouton:', e.message);
   }
@@ -49,7 +62,27 @@ export async function envoyerAnalyseBougie(chatId = null, bougie) {
 
     // Envoie à un utilisateur s’il y a un chatId
     if (chatId || chatIdMemo) {
-      await envoyerMessage(chatId || chatIdMemo, '🕯️ Analyse bougie', resultat);
+      const id = chatId || chatIdMemo;
+
+      const messageTexte = 
+        `🕯️ *Analyse Bougie :*\n` +
+        `Open: ${bougie.open}\n` +
+        `High: ${bougie.high}\n` +
+        `Low: ${bougie.low}\n` +
+        `Close: ${bougie.close}\n\n` +
+        `*Résultat:* ${resultat}`;
+
+      const sentMessage = await bot.sendMessage(id, messageTexte, {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: '🔁 Nouvelle Prédiction', callback_data: 'NOUVELLE_PREDICTION' }]
+          ]
+        }
+      });
+
+      // Supprime le message après 60 secondes
+      await supprimerMessageApres(id, sentMessage.message_id, 60000);
     }
   } catch (e) {
     console.error('❌ Erreur dans envoyerAnalyseBougie:', e.message);
