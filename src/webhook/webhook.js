@@ -8,6 +8,7 @@ import {
 
 import bot from '../bot.js';
 import { genererNouvellePrediction } from '../utils/prediction.js';
+import WebSocket from 'ws';
 
 const router = express.Router();
 
@@ -29,15 +30,15 @@ bot.on('callback_query', async (query) => {
 
   await bot.answerCallbackQuery(query.id);
 
-  // 🧹 Supprimer ancien message pour rendre propre
+  // Supprimer le message précédent (bouton cliqué)
   try {
     await bot.deleteMessage(chatId, messageId);
   } catch (e) {
-    console.warn('Impossible de supprimer le message précédent :', e.message);
+    console.warn('❌ Impossible de supprimer le message précédent :', e.message);
   }
 
+  // 🔁 Nouvelle prédiction
   if (query.data === 'NOUVELLE_PREDICTION' || query.data === 'regenerer') {
-    // Réinitialiser si besoin
     resetSequence();
 
     const { texte, mouvement } = genererNouvellePrediction();
@@ -45,32 +46,53 @@ bot.on('callback_query', async (query) => {
     if (/hausse/i.test(mouvement)) emoji = '🟢 BUY';
     else if (/baisse/i.test(mouvement)) emoji = '🔴 SELL';
 
-    const message = `${emoji}\n\n${texte}`;
+    const message = `${emoji} *Signal Prédictif*\n\n${texte}`;
 
-    await bot.sendMessage(chatId, message, {
+    const sentMessage = await bot.sendMessage(chatId, message, {
+      parse_mode: 'Markdown',
       reply_markup: {
         inline_keyboard: [
-          [{ text: '🔁 Nouvelle prédiction', callback_data: 'regenerer' }]
+          [
+            { text: '🔁 Rafraîchir Prédiction', callback_data: 'regenerer' },
+            { text: '📉 Voir Bougie', callback_data: 'NOUVELLE_ANALYSE' }
+          ]
         ]
       }
     });
+
+    // Suppression automatique
+    setTimeout(() => {
+      bot.deleteMessage(chatId, sentMessage.message_id).catch(err => {
+        console.warn('❌ Erreur suppression message prédiction :', err.message);
+      });
+    }, 60000);
+  }
+
+  // 📉 Nouvelle analyse de bougie simulée
+  if (query.data === 'NOUVELLE_ANALYSE') {
+    // Option : simuler une bougie (à remplacer avec des vraies données si dispo)
+    const bougieTest = {
+      open: (Math.random() * 100).toFixed(2),
+      close: (Math.random() * 100).toFixed(2),
+      high: (Math.random() * 100).toFixed(2),
+      low: (Math.random() * 100).toFixed(2)
+    };
+
+    await envoyerAnalyseBougie(chatId, bougieTest);
   }
 });
 
-// 📡 WebSocket (bougies)
-import WebSocket from 'ws';
+// 📡 WebSocket (bougies en temps réel)
 const ws = new WebSocket('wss://api-us-north.po.market/socket.io/?EIO=4&transport=websocket');
 
 ws.on('message', async (data) => {
   try {
     const text = data.toString();
 
-    // Vérifie que c'est un JSON valide (commence par "{")
     if (!text.trim().startsWith('{')) return;
 
     const tick = JSON.parse(text);
 
-    // Crée la bougie
     const bougie = {
       open: parseFloat(tick.open),
       high: parseFloat(tick.high),
@@ -83,7 +105,7 @@ ws.on('message', async (data) => {
       return;
     }
 
-    await envoyerAnalyseBougie(null, bougie); // Optionnel : passer un chatId
+    await envoyerAnalyseBougie(null, bougie);
   } catch (e) {
     console.error('❌ Erreur WebSocket Bougie:', e.message);
   }
