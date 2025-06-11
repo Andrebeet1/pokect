@@ -11,20 +11,20 @@ import { genererNouvellePrediction } from '../utils/prediction.js';
 import WebSocket from 'ws';
 
 const router = express.Router();
-const anciensMessages = {}; // 🔁 Pour supprimer les anciens messages
+const anciensMessages = {}; // 🧹 Suivi des anciens messages par chat
 
-// 📩 Webhook Telegram
+// 📩 Réception des mises à jour Telegram via webhook
 router.post('/', async (req, res) => {
   try {
     await handleUpdate(req.body);
     res.sendStatus(200);
   } catch (e) {
-    console.error('Erreur webhook:', e);
+    console.error('❌ Erreur webhook :', e.message);
     res.sendStatus(500);
   }
 });
 
-// 🎯 Boutons Telegram
+// 🎯 Gestion des boutons inline Telegram
 bot.on('callback_query', async (query) => {
   const chatId = query.message.chat.id;
   const messageId = query.message.message_id;
@@ -32,20 +32,20 @@ bot.on('callback_query', async (query) => {
 
   await bot.answerCallbackQuery(query.id);
 
-  // 🔁 Supprimer ancien message
+  // 🧹 Suppression du message contenant les boutons
   try {
     await bot.deleteMessage(chatId, messageId);
   } catch (e) {
-    console.warn('⚠️ Erreur suppression message bouton :', e.message);
+    console.warn(`⚠️ Erreur suppression message #${messageId} :`, e.message);
   }
 
-  // 🔄 Nettoyage des anciens messages précédents
+  // 🔄 Suppression des anciens messages
   if (anciensMessages[chatId]) {
-    for (const id of anciensMessages[chatId]) {
+    for (const oldId of anciensMessages[chatId]) {
       try {
-        await bot.deleteMessage(chatId, id);
+        await bot.deleteMessage(chatId, oldId);
       } catch (e) {
-        console.warn(`❌ Erreur suppression message #${id} :`, e.message);
+        console.warn(`⚠️ Erreur suppression ancien message #${oldId} :`, e.message);
       }
     }
     anciensMessages[chatId] = [];
@@ -66,9 +66,7 @@ bot.on('callback_query', async (query) => {
       parse_mode: 'Markdown',
       reply_markup: {
         inline_keyboard: [
-          [
-            { text: '🔁 Nouvelle Prédiction', callback_data: 'regenerer' }
-          ],
+          [{ text: '🔁 Nouvelle Prédiction', callback_data: 'regenerer' }],
           [
             { text: '📉 Voir Bougie', callback_data: 'NOUVELLE_ANALYSE' },
             { text: '📊 Voir Statistiques', callback_data: 'VOIR_STATS' }
@@ -85,21 +83,23 @@ bot.on('callback_query', async (query) => {
 
     // ⏱️ Auto-suppression après 60 sec
     setTimeout(() => {
-      bot.deleteMessage(chatId, sent.message_id).catch(err => {
-        console.warn('❌ Erreur suppression prédiction :', err.message);
-      });
+      bot.deleteMessage(chatId, sent.message_id).catch(err =>
+        console.warn('❌ Erreur suppression prédiction :', err.message)
+      );
     }, 60000);
+    return;
   }
 
-  // 📉 Nouvelle analyse de bougie simulée
+  // 📉 Analyse bougie simulée
   if (action === 'NOUVELLE_ANALYSE') {
     const bougieTest = {
       open: (Math.random() * 100).toFixed(2),
-      close: (Math.random() * 100).toFixed(2),
       high: (Math.random() * 100).toFixed(2),
-      low: (Math.random() * 100).toFixed(2)
+      low: (Math.random() * 100).toFixed(2),
+      close: (Math.random() * 100).toFixed(2)
     };
     await analyserEtEnvoyerBougie(chatId, bougieTest);
+    return;
   }
 
   // 📊 Statistiques
@@ -108,6 +108,7 @@ bot.on('callback_query', async (query) => {
       parse_mode: 'Markdown'
     });
     anciensMessages[chatId].push(msg.message_id);
+    return;
   }
 
   // ⚙️ Paramètres
@@ -116,6 +117,7 @@ bot.on('callback_query', async (query) => {
       parse_mode: 'Markdown'
     });
     anciensMessages[chatId].push(msg.message_id);
+    return;
   }
 
   // ❓ Aide
@@ -124,16 +126,18 @@ bot.on('callback_query', async (query) => {
       parse_mode: 'Markdown'
     });
     anciensMessages[chatId].push(msg.message_id);
+    return;
   }
 });
 
-// 📡 WebSocket (bougies en temps réel)
+// 📡 Connexion WebSocket : réception de bougies en temps réel
 const ws = new WebSocket('wss://api-us-north.po.market/socket.io/?EIO=4&transport=websocket');
 
 ws.on('message', async (data) => {
   try {
-    const text = data.toString();
-    if (!text.trim().startsWith('{')) return;
+    const text = data.toString().trim();
+
+    if (!text.startsWith('{')) return;
 
     const tick = JSON.parse(text);
     const bougie = {
@@ -143,14 +147,14 @@ ws.on('message', async (data) => {
       close: parseFloat(tick.close)
     };
 
-    if ([bougie.open, bougie.high, bougie.low, bougie.close].some(isNaN)) {
+    if (Object.values(bougie).some(isNaN)) {
       console.warn('⛔ Bougie invalide reçue :', bougie);
       return;
     }
 
     await analyserEtEnvoyerBougie(null, bougie);
   } catch (e) {
-    console.error('❌ Erreur WebSocket Bougie:', e.message);
+    console.error('❌ Erreur WebSocket Bougie :', e.message);
   }
 });
 
