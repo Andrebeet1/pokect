@@ -7,5 +7,17 @@ export function envoyerMessage(chatId, texte, mouvement) {
   else if (/baisse/i.test(mouvement)) emoji = '🔴 SELL';
 
   const message = `${emoji}\n\n${texte}`;
-  return bot.sendMessage(chatId, message);
+
+  return bot.sendMessage(chatId, message, {
+    reply_markup: {
+      inline_keyboard: [
+        [
+          {
+            text: '🔁 Nouvelle Prédiction',
+            callback_data: 'regenere'
+          }
+        ]
+      ]
+    }
+  });
 }
